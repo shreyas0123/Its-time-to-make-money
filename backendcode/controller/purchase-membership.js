@@ -1,5 +1,6 @@
 const Razorpay = require('razorpay');
 const orderDb = require('../models/order');
+const jwt = require('jsonwebtoken');
 
 exports.getPremium = async (req, res, next) => {
     try {
@@ -49,7 +50,20 @@ exports.getPremium = async (req, res, next) => {
 //from this screts id,key razorpay comes to know that okay this is shreyas comapny tries to create an order
 //check orderlist table where staus:pending,paymentId:null,only we get orderId and userId because while loggedin only we get orderId initially from razorpay
 //i need to send response like order(it consist of orderid,amount etc) & key_id to the front end
-//
+
+
+//used do decode jwt token (how to decode jwt token in front end)
+//here we are fixing bug i.e is if user purchased premium membership then if i refresh the page or premium purchased user loggedin again 
+//then "Premium Purchased" text will goes off and Buy premium button will showned again this is the bug we need to fix it
+//once user purchased premium then if he loggedin again or refreshes the page always show him msg Pemium Purchased instead of Buy premium button
+
+//while creating token along with pass ispremiumUser then pass these token to front end , in front end we will decrypt the token
+//so that we comes to know which user purchased premium
+function generateToken(id,ispremiumUser){
+    return jwt.sign({userId: id,isPremium: ispremiumUser},'fiuhf2bd484fdfhfff656ffhfEwddfkmnv');
+}
+
+
 
 
 exports.updatePremium = async (req, res, next) => {
@@ -80,14 +94,14 @@ exports.updatePremium = async (req, res, next) => {
         // Define a function to update the user table to indicate that the user is a premium user.
         function updateUserTable() {
             return new Promise((resolve) => {
-                resolve(req.user.update({ premiumUser: true }));
+                resolve(req.user.update({ ispremiumUser: true }));
             });
         }
 
         // Execute both update functions concurrently using Promise.all(). //to speed up the code we can run these code parallelly
         Promise.all([updateTable(result), updateUserTable()]).then(() => {
             // If both updates are successful, send a response indicating a successful transaction.
-            res.json({ success: true, message: "Transaction successful" });
+            res.json({ success: true, message: "Premium Purchased Successfullly",token: generateToken(req.user.id,true)});
         });
     } catch (err) {
         console.log("Error in updating transaction", err);
